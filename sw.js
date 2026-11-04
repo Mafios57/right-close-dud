@@ -1,6 +1,6 @@
 // Caches the game so it runs with no connection after the first visit.
-// When you change any file, bump CACHE (rcd-v3 -> rcd-v4) so phones load the new version.
-var CACHE = 'rcd-v3';
+// When you change any file, bump CACHE (rcd-v5 -> rcd-v6) so phones load the new version.
+var CACHE = 'rcd-v5';
 var FILES = ['./', 'index.html', 'app.js', 'items.js', 'manifest.webmanifest', 'icon.svg'];
 self.addEventListener('install', function (e) {
   e.waitUntil(caches.open(CACHE).then(function (c) { return c.addAll(FILES); }));

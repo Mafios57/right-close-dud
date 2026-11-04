@@ -46,14 +46,69 @@ Ages 16-19, 8 questions a round:
 | index.html | Page and styles (Chalkboard and Arcade tokens) |
 | app.js | Game logic |
 | items.js | The question bank. In the data, type "trap" is the Close answer. |
+| tools/check-items.js | Checks every question follows the rules |
 | sw.js | Offline cache |
 | manifest.webmanifest, icon.svg | Home-screen install |
 
+## Fun layer
+
+- Confetti and a rising "+2" when an answer is Right. A gentle shake and a low sound when it is not.
+- Praise lines change each time ("Nice one!", "Great eye!"). Wrong answers get "So close!" or "Good try!".
+- "2 in a row!" badge for runs of Right answers. A bigger confetti burst from 3 in a row.
+- Level up: a gold medal screen with confetti. It only appears while the student is still on the feedback screen.
+- End of round: 1 to 3 stars (3 stars = 90% or more right, 2 stars = 60% or more), numbers count up, best run in a row.
+- Daily streak: playing on consecutive days adds 1 to the flame on the home screen.
+- Sounds are made in code (no audio files). The speaker button on the home screen mutes them, and the choice is saved.
+- All motion switches off when the phone or computer is set to reduce motion.
+
+## Help for students who are stuck
+
+- "Need a hint?" on the question screen shows one nudge (the item's `hint`, or step 1 if there is no hint). It never shows the answer.
+- "Show me the steps" on the feedback sheet walks through the item's `steps` one tap at a time, then shows the Right answer.
+- Both are optional. The export records `hint` (used or not) and `steps` (how many steps the student opened).
+
 ## Add a question
 
-Copy an item in `items.js` and change it. One `correct` (Right), at least one `trap` (Close) with `mis` and `why`, one `dud` with `why`. Set `ages`, `level` per age, `track`, `topic`, and `target` (a clear trick word in the question, or `null`).
+Every question lives in `items.js`. Copy this block, paste it inside the list (before the last `];`), and change it:
 
-After changing any file on a hosted copy, change `CACHE` in `sw.js` (rcd-v1 to rcd-v2).
+```js
+  {
+    id: "m12", subject: "Math", track: "core", ages: ["12-15"], level: { "12-15": 1 },
+    theme: "Sports", topic: "Number: percentages", syllabus: "Number: percentages",
+    stem: "A team won 3 of its 4 matches. What percent did it win?",
+    target: null,
+    answers: [
+      { text: "75%", type: "correct" },
+      { text: "34%", type: "trap", mis: "Putting the numbers side by side", why: "3 and 4 written together is not a percent." },
+      { text: "400%", type: "dud", why: "A team cannot win more than all its matches." }
+    ],
+    hint: "Write it as a fraction first: 3 out of 4.",
+    steps: [
+      "Write it as a fraction: 3/4.",
+      "Percent means out of 100. 3/4 = 75/100.",
+      "75 out of 100 is 75%."
+    ],
+    tip: "Turn the fraction into hundredths."
+  },
+```
+
+Rules:
+- `id` must be new. Use the subject letter and the next number (m12, s7, l6, x9).
+- `type: "correct"` is Right, `"trap"` is Close, `"dud"` is Dud. Exactly one Right, at least one Close, exactly one Dud.
+- Each Close answer needs `mis` (the mistake in plain words) and `why`. Reuse the same `mis` text when the same mistake appears again.
+- `level`: 1 = one step and everyday words, 2 = one idea that needs a check, 3 = exam level. Give a level for each age in `ages`.
+- `track`: "core" for everyone, "science" for the science track only.
+- `target`: a clear trick word from the question (NOT, 2x, start), or `null`.
+- `steps`: 2 to 5 short sentences a 12-year-old can follow. End on the answer.
+- `hint`: optional. A nudge, never the answer.
+
+Then check your work:
+
+```
+node tools/check-items.js
+```
+
+It lists any rule a question breaks. When it says "All good.", change `CACHE` in `sw.js` (for example rcd-v4 to rcd-v5), then commit and push.
 
 ## Data
 

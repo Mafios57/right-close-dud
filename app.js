@@ -1,6 +1,7 @@
 // Right, Close, Dud: a small offline game in a lesson-app layout.
 // Every screen: one task, a bottom action bar. After "Check", the bar turns into a green or red feedback sheet.
 // Ages 12-15: Word hunt (if a trick word) -> pick the Right answer -> bet -> spot the Close one -> feedback -> explain.
+// Optional help: "Need a hint?" on question screens shows step 1. "Show me the steps" on feedback walks through every step.
 // Ages 16-19: Word hunt (if a trick word) -> sort every answer -> bet -> feedback -> explain.
 // Levels: everyone starts at Level 1 in each subject. 3 right in a row moves up. 2 wrong in a row moves down.
 // Progress is stored on the device. In the data, type "trap" is the Close answer.
@@ -24,11 +25,17 @@
     x: '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M5 5l14 14M19 5L5 19" stroke="currentColor" stroke-width="3" stroke-linecap="round"/></svg>',
     check: '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 12.5l5 5L20 6.5" fill="none" stroke="currentColor" stroke-width="3.5" stroke-linecap="round" stroke-linejoin="round"/></svg>',
     lock: '<svg viewBox="0 0 24 24" aria-hidden="true"><rect x="5" y="11" width="14" height="10" rx="2" fill="currentColor"/><path d="M8 11V8a4 4 0 018 0v3" fill="none" stroke="currentColor" stroke-width="2.5"/></svg>',
-    star: '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 3l2.7 5.6 6.1.9-4.4 4.3 1 6.1L12 17l-5.4 2.9 1-6.1L3.2 9.5l6.1-.9z" fill="currentColor"/></svg>'
+    star: '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 3l2.7 5.6 6.1.9-4.4 4.3 1 6.1L12 17l-5.4 2.9 1-6.1L3.2 9.5l6.1-.9z" fill="currentColor"/></svg>',
+    flame: '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 2c1 4 5 5.5 5 11a5 5 0 01-10 0c0-2.5 1.2-4 2.5-5 .2 2 1.2 3 2.3 3.3C11 8.5 11.3 5 12 2z" fill="currentColor"/></svg>',
+    soundOn: '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 9h4l5-4v14l-5-4H4z" fill="currentColor"/><path d="M16 8.5a5 5 0 010 7M18.5 6a8.5 8.5 0 010 12" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"/></svg>',
+    soundOff: '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 9h4l5-4v14l-5-4H4z" fill="currentColor"/><path d="M16.5 9.5l5 5M21.5 9.5l-5 5" stroke="currentColor" stroke-width="2" stroke-linecap="round"/></svg>'
   };
+  var PRAISE = ['Right!', 'Nice one!', 'You got it!', 'Great eye!', 'Spot on!', 'Brilliant!'];
+  var ENCOURAGE = ['Not quite.', 'So close!', 'Good try!', 'Almost!'];
+  function pickOne(list) { return list[Math.floor(Math.random() * list.length)]; }
 
   // ---------- storage ----------
-  function freshStore() { return { age: null, track: 'core', subject: null, sessions: 0, points: 0, cards: {}, mis: {}, log: [], levels: {} }; }
+  function freshStore() { return { age: null, track: 'core', subject: null, sessions: 0, points: 0, cards: {}, mis: {}, log: [], levels: {}, sound: true, streak: 0, lastDay: null }; }
   function loadStore() {
     var s = null;
     try { var raw = localStorage.getItem(STORE_KEY); if (raw) s = JSON.parse(raw); } catch (e) { s = null; }
@@ -41,6 +48,109 @@
   function save() {
     if (store.log.length > MAX_LOG) store.log = store.log.slice(-MAX_LOG);
     try { localStorage.setItem(STORE_KEY, JSON.stringify(store)); } catch (e) { /* play without saving */ }
+  }
+
+  // ---------- fun: motion and sound ----------
+  // Everything here is optional decoration. It does nothing when the device asks for reduced motion,
+  // and every call is wrapped so a missing browser feature never stops the game.
+  var REDUCED = (function () { try { return window.matchMedia('(prefers-reduced-motion: reduce)').matches; } catch (e) { return false; } })();
+  var RAF = window.requestAnimationFrame ? window.requestAnimationFrame.bind(window) : null;
+  var fx = {
+    // Short burst of paper confetti from the top of the screen.
+    confetti: function (count) {
+      if (REDUCED || !RAF) return;
+      try {
+        var c = document.createElement('canvas'), ctx = c.getContext && c.getContext('2d');
+        if (!ctx) return;
+        var W = c.width = window.innerWidth, H = c.height = window.innerHeight;
+        c.className = 'confetti'; c.setAttribute('aria-hidden', 'true');
+        document.body.appendChild(c);
+        var colors = ['#23863B', '#FF9F1C', '#1677C9', '#F2B600', '#E5484D', '#9AA3AE'];
+        var bits = [];
+        for (var i = 0; i < count; i++) {
+          bits.push({ x: W / 2 + (Math.random() - 0.5) * W * 0.4, y: H * 0.35, vx: (Math.random() - 0.5) * 12, vy: -6 - Math.random() * 9,
+            s: 6 + Math.random() * 6, r: Math.random() * 6, vr: (Math.random() - 0.5) * 0.4, col: colors[i % colors.length] });
+        }
+        var start = Date.now();
+        (function frame() {
+          var t = Date.now() - start;
+          ctx.clearRect(0, 0, W, H);
+          bits.forEach(function (b) {
+            b.vy += 0.35; b.x += b.vx; b.y += b.vy; b.r += b.vr; b.vx *= 0.99;
+            ctx.save(); ctx.translate(b.x, b.y); ctx.rotate(b.r); ctx.fillStyle = b.col;
+            ctx.globalAlpha = Math.max(0, 1 - t / 1600); ctx.fillRect(-b.s / 2, -b.s / 4, b.s, b.s / 2); ctx.restore();
+          });
+          if (t < 1600) RAF(frame); else c.remove();
+        })();
+      } catch (e) { /* decoration only */ }
+    },
+    // A "+2" that floats up from an element.
+    floatFrom: function (el, text, cls) {
+      if (REDUCED || !el || !el.getBoundingClientRect) return;
+      try {
+        var r = el.getBoundingClientRect();
+        var f = h('span', { class: 'floater ' + (cls || ''), text: text, 'aria-hidden': 'true', style: 'left:' + (r.left + r.width / 2) + 'px;top:' + r.top + 'px' });
+        document.body.appendChild(f);
+        setTimeout(function () { f.remove(); }, 1000);
+      } catch (e) { /* decoration only */ }
+    },
+    // Replays a CSS animation class on an element.
+    play: function (el, cls) {
+      if (REDUCED || !el) return;
+      el.classList.remove(cls); void el.offsetWidth; el.classList.add(cls);
+    },
+    // Counts a number up from 0 to its value.
+    countUp: function (el, to, prefix, suffix) {
+      prefix = prefix || ''; suffix = suffix || '';
+      if (REDUCED || !RAF || !to) { el.textContent = prefix + to + suffix; return; }
+      var start = Date.now(), dur = 700;
+      (function frame() {
+        var k = Math.min(1, (Date.now() - start) / dur);
+        el.textContent = prefix + Math.round(to * (1 - Math.pow(1 - k, 3))) + suffix;
+        if (k < 1) RAF(frame);
+      })();
+    }
+  };
+  // Tiny sounds made in code, so there are no audio files to download. Mute is saved on the device.
+  var audioCtx = null;
+  function sound(kind) {
+    if (!store.sound) return;
+    try {
+      var AC = window.AudioContext || window.webkitAudioContext;
+      if (!AC) return;
+      audioCtx = audioCtx || new AC();
+      if (audioCtx.state === 'suspended') audioCtx.resume();
+      var tunes = {
+        tap: [[520, 0, 0.05, 'sine', 0.06]],
+        right: [[660, 0, 0.12, 'sine', 0.18], [990, 0.1, 0.18, 'sine', 0.18]],
+        wrong: [[220, 0, 0.16, 'triangle', 0.2], [165, 0.14, 0.22, 'triangle', 0.2]],
+        level: [[523, 0, 0.12, 'square', 0.08], [659, 0.12, 0.12, 'square', 0.08], [784, 0.24, 0.12, 'square', 0.08], [1047, 0.36, 0.3, 'square', 0.08]],
+        star: [[880, 0, 0.12, 'sine', 0.14]],
+        done: [[523, 0, 0.14, 'sine', 0.16], [784, 0.14, 0.14, 'sine', 0.16], [1047, 0.28, 0.3, 'sine', 0.16]]
+      };
+      var now = audioCtx.currentTime;
+      (tunes[kind] || []).forEach(function (n) {
+        var o = audioCtx.createOscillator(), g = audioCtx.createGain();
+        o.type = n[3]; o.frequency.value = n[0];
+        g.gain.setValueAtTime(0.0001, now + n[1]);
+        g.gain.exponentialRampToValueAtTime(n[4], now + n[1] + 0.02);
+        g.gain.exponentialRampToValueAtTime(0.0001, now + n[1] + n[2]);
+        o.connect(g); g.connect(audioCtx.destination);
+        o.start(now + n[1]); o.stop(now + n[1] + n[2] + 0.05);
+      });
+    } catch (e) { /* sound is optional */ }
+  }
+  // Daily streak: playing on consecutive days adds 1. Missing a day starts again at 1.
+  function dayKey(d) { return d.getFullYear() + '-' + (d.getMonth() + 1) + '-' + d.getDate(); }
+  function touchStreak() {
+    var today = dayKey(new Date()), yesterday = dayKey(new Date(Date.now() - 864e5));
+    if (store.lastDay === today) return;
+    store.streak = store.lastDay === yesterday ? (store.streak || 0) + 1 : 1;
+    store.lastDay = today;
+  }
+  function liveStreak() {
+    var today = dayKey(new Date()), yesterday = dayKey(new Date(Date.now() - 864e5));
+    return store.lastDay === today || store.lastDay === yesterday ? store.streak || 0 : 0;
   }
 
   // ---------- helpers ----------
@@ -65,7 +175,9 @@
     return el;
   }
   // Renders one screen: the main content, then the bottom action bar (if any).
+  var screenSeq = 0;
   function show(kids, bar) {
+    screenSeq += 1;
     app.innerHTML = '';
     var main = h('main', { class: 'screen' }, kids);
     app.appendChild(main);
@@ -138,7 +250,12 @@
   function brandBar() {
     return h('div', { class: 'brandbar' }, [
       h('h1', { class: 'brand' }, [h('span', { text: 'Right, ' }), h('span', { text: 'Close, ' }), h('span', { text: 'Dud' })]),
-      h('span', { class: 'xp', 'aria-label': store.points + ' points in total' }, [h('i'), String(store.points)])
+      h('div', { class: 'brand-right' }, [
+        h('span', { class: 'streak' + (liveStreak() ? ' lit' : ''), 'aria-label': liveStreak() + ' day streak', html: ICON.flame + '<b>' + liveStreak() + '</b>' }),
+        h('span', { class: 'xp', 'aria-label': store.points + ' points in total' }, [h('i'), String(store.points)]),
+        h('button', { class: 'x sound', 'aria-label': store.sound ? 'Sound on. Tap to mute.' : 'Sound off. Tap to turn on.', 'aria-pressed': String(!!store.sound),
+          html: store.sound ? ICON.soundOn : ICON.soundOff, onclick: function () { store.sound = !store.sound; save(); if (store.sound) sound('right'); home(); } })
+      ])
     ]);
   }
   function home() {
@@ -206,8 +323,8 @@
     return out;
   }
   function startSession() {
-    store.sessions += 1; save();
-    sess = { n: store.sessions, subject: store.subject, items: pickItems(store.subject), i: 0, points: 0, right: 0, sure: 0, sureWrong: 0, ups: 0, done: 0 };
+    store.sessions += 1; touchStreak(); save();
+    sess = { n: store.sessions, subject: store.subject, items: pickItems(store.subject), i: 0, points: 0, right: 0, sure: 0, sureWrong: 0, ups: 0, done: 0, combo: 0, best: 0 };
     nextItem();
   }
 
@@ -233,6 +350,7 @@
     items.forEach(function (x, idx) {
       var t = h('button', { class: 'tile', role: 'radio', 'aria-checked': 'false', onclick: function () {
         Array.prototype.forEach.call(box.children, function (b) { var on = b === t; b.classList.toggle('sel', on); b.setAttribute('aria-checked', String(on)); });
+        fx.play(t, 'pop'); sound('tap');
         onChange(idx);
       } }, render(x));
       box.appendChild(t);
@@ -240,6 +358,43 @@
     return box;
   }
   function lockTiles(box) { Array.prototype.forEach.call(box.children, function (b) { b.disabled = true; }); }
+
+  // "Need a hint?": reveals the first step only. Optional.
+  function hintBox(ctx) {
+    var it = ctx.it;
+    if (!it.steps || !it.steps.length) return null;
+    var panel = h('div', { class: 'hint', role: 'status' }, [h('p', { class: 'eyebrow', text: 'Hint' }), h('p', { text: it.hint || it.steps[0] })]);
+    panel.hidden = !ctx.hint;
+    var btn = h('button', { class: 'linkbtn hintbtn', text: 'Need a hint?', onclick: function () { ctx.hint = true; panel.hidden = false; btn.hidden = true; } });
+    btn.hidden = !!ctx.hint;
+    return h('div', { class: 'stack' }, [btn, panel]);
+  }
+
+  // "Show me the steps": one step per tap, then the Right answer.
+  function stepsScreen(ctx) {
+    var it = ctx.it, shown = 0;
+    var correct = it.answers.filter(function (a) { return a.type === 'correct'; })[0];
+    var list = h('ol', { class: 'steps' });
+    var answer = h('div', { class: 'tile t-right' }, [h('div', { class: 'top' }, [h('span', { text: correct.text }), h('span', { class: 'pill p-right', text: 'Right' })])]);
+    answer.hidden = true;
+    var next = h('button', { class: 'btn', text: 'Next step' });
+    function reveal() {
+      if (shown < it.steps.length) {
+        list.appendChild(h('li', {}, [h('span', { class: 'num', text: String(shown + 1) }), h('span', { text: it.steps[shown] })]));
+        shown += 1;
+        ctx.steps = Math.max(ctx.steps || 0, shown);
+        if (shown > 1) sound('tap');
+        if (shown === it.steps.length) { answer.hidden = false; next.textContent = 'Continue'; fx.play(answer, 'pop'); sound('right'); }
+        try { list.lastChild.scrollIntoView({ block: 'nearest', behavior: 'smooth' }); } catch (e) { /* ignore */ }
+      } else {
+        explainStep(ctx);
+      }
+    }
+    next.addEventListener('click', reveal);
+    show([topBar(), h('div', { class: 'stack' }, [h('p', { class: 'eyebrow', text: 'Step by step' }), h('h2', { class: 'prompt', text: it.stem })]),
+      list, answer], actionBar([next]));
+    reveal();
+  }
 
   function visibleAnswers(it) {
     if (!young()) return it.answers.slice();
@@ -264,7 +419,8 @@
     check.addEventListener('click', function () {
       ctx.scan = norm(words[sel]) === target;
       lockTiles(box);
-      Array.prototype.forEach.call(box.children, function (b, i) { if (norm(words[i]) === target) { b.classList.remove('sel'); b.classList.add('t-right'); } });
+      Array.prototype.forEach.call(box.children, function (b, i) { if (norm(words[i]) === target) { b.classList.remove('sel'); b.classList.add('t-right'); fx.play(b, 'wiggle'); } });
+      sound(ctx.scan ? 'right' : 'wrong');
       app.replaceChild(sheet(ctx.scan, ctx.scan ? 'Good eye!' : 'Look again.',
         [ctx.scan ? 'That word tells you what to find.' : 'The key word is "' + it.target + '". It changes what the question wants.'],
         function () { answerStep(ctx); }), app.lastChild);
@@ -280,7 +436,7 @@
       ctx.labels = {}; ctx.labels[sel] = 'correct'; ctx.chosen = ctx.answers[sel].text; betStep(ctx);
     } });
     show([topBar(), stepHead('Pick the Right answer', ctx.it),
-      tileList(ctx.answers, function (a) { return [a.text]; }, function (idx) { sel = idx; next.disabled = false; })], actionBar([next]));
+      tileList(ctx.answers, function (a) { return [a.text]; }, function (idx) { sel = idx; next.disabled = false; }), hintBox(ctx)], actionBar([next]));
   }
 
   // Ages 16-19: sort every answer.
@@ -302,7 +458,7 @@
       });
       rows.appendChild(h('div', { class: 'sortcard' }, [h('p', { class: 'atext', text: a.text }), seg]));
     });
-    show([topBar(), stepHead('Sort it: Right, Close or Dud', ctx.it), h('p', { class: 'muted', text: 'Only one answer is Right.' }), rows], actionBar([next]));
+    show([topBar(), stepHead('Sort it: Right, Close or Dud', ctx.it), h('p', { class: 'muted', text: 'Only one answer is Right.' }), rows, hintBox(ctx)], actionBar([next]));
   }
 
   // Bet, after choosing.
@@ -331,7 +487,7 @@
       feedbackStep(ctx);
     } });
     show([topBar(), stepHead('Spot the Close one', ctx.it), h('p', { class: 'muted', text: 'One of these looks right but is wrong.' }),
-      tileList(rest.map(function (i) { return ctx.answers[i]; }), function (a) { return [a.text]; }, function (idx) { sel = idx; check.disabled = false; })], actionBar([check]));
+      tileList(rest.map(function (i) { return ctx.answers[i]; }), function (a) { return [a.text]; }, function (idx) { sel = idx; check.disabled = false; }), hintBox(ctx)], actionBar([check]));
   }
 
   // Green or red sheet in place of the action bar.
@@ -355,7 +511,7 @@
     store.points += delta;
     if (young() && store.points < 0) store.points = 0;
     ctx.right = right;
-    if (right) sess.right += 1;
+    if (right) { sess.right += 1; sess.combo += 1; sess.best = Math.max(sess.best, sess.combo); } else { sess.combo = 0; }
     if (ctx.bet === 3) { sess.sure += 1; if (!right) sess.sureWrong += 1; }
     sess.done += 1;
     var c = card(it);
@@ -375,7 +531,7 @@
     var tiles = h('div', { class: 'tiles' });
     ctx.answers.forEach(function (a, i) {
       var mine = ctx.labels[i], match = mine === a.type;
-      tiles.appendChild(h('div', { class: 'tile t-' + CLS[a.type] }, [
+      tiles.appendChild(h('div', { class: 'tile reveal t-' + CLS[a.type], style: '--d:' + (i * 90) + 'ms' }, [
         h('div', { class: 'top' }, [h('span', { text: a.text }), h('span', { class: 'pill p-' + CLS[a.type], text: LABELS[a.type] })]),
         h('span', { class: 'you', text: (match ? '✓ You said ' : '✗ You said ') + LABELS[mine] }),
         a.type === 'trap' ? h('span', { class: 'why', text: 'The mistake: ' + a.mis + '. ' + a.why }) : null
@@ -388,10 +544,39 @@
     lines.push('How to spot it: ' + it.tip);
     if (ctx.bet === 3 && !right) lines.push('You were very sure, so this one comes back next round.');
     var lv = levelState(sess.subject).level;
-    var extra = move === 'up' ? h('p', { class: 'levelup', text: 'Level up! You are on Level ' + lv + ' in ' + sess.subject + '.' })
-              : move === 'down' ? h('p', { class: 'levelup', text: 'Back to Level ' + lv + ' for now. Win 3 in a row to move up.' }) : null;
+    var extra = h('div', { class: 'stack' }, [
+      right && sess.combo >= 2 ? h('p', { class: 'combo', html: ICON.flame + '<span>' + sess.combo + ' in a row!</span>' }) : null,
+      move === 'up' ? h('p', { class: 'levelup', text: 'Level up! You are on Level ' + lv + ' in ' + sess.subject + '.' })
+        : move === 'down' ? h('p', { class: 'levelup', text: 'Back to Level ' + lv + ' for now. Win 3 in a row to move up.' }) : null,
+      it.steps && it.steps.length ? h('button', { class: 'btn ghost steps-btn', text: 'Show me the steps', onclick: function () { stepsScreen(ctx); } }) : null
+    ]);
     show([topBar(), stepHead(right ? 'Nice' : 'Here is why', it), tiles],
-      sheet(right, (right ? 'Right! ' : 'Not quite. ') + signed(delta) + ' pts', lines, function () { explainStep(ctx); }, extra));
+      sheet(right, pickOne(right ? PRAISE : ENCOURAGE) + ' ' + signed(delta) + ' pts', lines, function () { explainStep(ctx); }, extra));
+    var ptsEl = app.querySelector('.pts');
+    if (right) {
+      sound('right'); fx.confetti(sess.combo >= 3 ? 110 : 60); fx.play(ptsEl, 'bump');
+      if (delta) fx.floatFrom(ptsEl, signed(delta), 'up');
+    } else {
+      sound('wrong'); fx.play(app.lastChild, 'shake');
+      if (delta) fx.floatFrom(ptsEl, signed(delta), 'down');
+    }
+    // The celebration only appears if the student is still on this feedback screen.
+    // The sheet already says "Level up!", so a fast tapper never misses the news.
+    var thisScreen = screenSeq;
+    if (move === 'up') setTimeout(function () { if (screenSeq === thisScreen) levelUp(lv, sess ? sess.subject : ''); }, 650);
+  }
+
+  // Big celebration when a student moves up a level. Sits on top of the feedback screen until dismissed.
+  function levelUp(lv, subject) {
+    var overlay = h('div', { class: 'celebrate', role: 'dialog', 'aria-modal': 'true', 'aria-label': 'Level up' }, [
+      h('div', { class: 'medal' }, [h('span', { class: 'eyebrow', text: 'Level' }), h('b', { text: String(lv) })]),
+      h('h2', { class: 'title', text: 'Level up!' }),
+      h('p', { class: 'muted', text: 'You are now on Level ' + lv + ' in ' + subject + '. Harder questions are coming.' }),
+      h('button', { class: 'btn', text: 'Keep going', onclick: function () { overlay.remove(); } })
+    ]);
+    app.appendChild(overlay);
+    sound('level'); fx.confetti(150);
+    try { overlay.querySelector('button').focus(); } catch (e) { /* ignore */ }
   }
 
   // Why is it Close? Pick the mistake, Check, then write it in your own words.
@@ -420,15 +605,18 @@
       lockTiles(box);
       Array.prototype.forEach.call(box.children, function (b, i) { if (options[i] === trap.mis) { b.classList.remove('sel'); b.classList.add('t-right'); } });
       writeBox.hidden = false;
+      sound(ok ? 'right' : 'wrong');
+      if (ok) fx.confetti(30);
       app.replaceChild(sheet(ok, ok ? 'Yes!' : 'Not this one.', [(ok ? '' : 'The mistake is: ' + trap.mis + '. ') + trap.why],
         function () { finish(text.value); }), app.lastChild);
+      if (!ok) fx.play(app.lastChild, 'shake');
     });
     function finish(explanation) {
       if (young() && explanation.trim() === starter.trim()) explanation = '';
       store.log.push({
         t: new Date().toISOString(), session: sess.n, item: it.id, subject: it.subject, age: store.age,
         track: store.age === '16-19' ? store.track : '', level: itemLevel(it), studentLevel: ctx.levelBefore,
-        scan: ctx.scan, bet: ctx.bet, right: ctx.right,
+        scan: ctx.scan, bet: ctx.bet, right: ctx.right, hint: !!ctx.hint, steps: ctx.steps || 0,
         labels: ctx.answers.map(function (a, i) { return a.text + '=' + LABELS[ctx.labels[i]]; }).join(' | '),
         close: trap.text, picked: picked, pickedRight: picked === trap.mis, explanation: explanation.trim()
       });
@@ -442,21 +630,35 @@
 
   function endSession() {
     var n = sess.done, lv = levelState(sess.subject).level;
-    var acc = n ? Math.round((100 * sess.right) / n) + '%' : '-';
+    var accN = n ? Math.round((100 * sess.right) / n) : 0;
+    var stars = !n ? 0 : accN >= 90 ? 3 : accN >= 60 ? 2 : 1;
+    var starRow = h('div', { class: 'stars', 'aria-label': stars + ' of 3 stars' });
+    [1, 2, 3].forEach(function (k) { starRow.appendChild(h('span', { class: 'star' + (k <= stars ? ' on' : ''), style: '--d:' + (k * 220) + 'ms', html: ICON.star })); });
+    var vPts = h('div', { class: 'v', text: signed(sess.points) });
+    var vAcc = h('div', { class: 'v', text: n ? accN + '%' : '-' });
     var stats = h('div', { class: 'stat-row' }, [
-      h('div', { class: 'stat' }, [h('div', { class: 'k', text: 'Points' }), h('div', { class: 'v', text: signed(sess.points) })]),
-      h('div', { class: 'stat s-green' }, [h('div', { class: 'k', text: 'Right' }), h('div', { class: 'v', text: acc })]),
-      h('div', { class: 'stat s-blue' }, [h('div', { class: 'k', text: 'Level' }), h('div', { class: 'v', text: lv + ' of 3' })])
+      h('div', { class: 'stat reveal', style: '--d:500ms' }, [h('div', { class: 'k', text: 'Points' }), vPts]),
+      h('div', { class: 'stat s-green reveal', style: '--d:600ms' }, [h('div', { class: 'k', text: 'Right' }), vAcc]),
+      h('div', { class: 'stat s-blue reveal', style: '--d:700ms' }, [h('div', { class: 'k', text: 'Level' }), h('div', { class: 'v', text: lv + ' of 3' })])
     ]);
-    var subject = sess.subject;
+    var subject = sess.subject, best = sess.best;
     var sureLine = sess.sure ? 'Very sure but wrong: ' + sess.sureWrong + ' of ' + sess.sure + ' x3 bets.' : 'You made no x3 bets this round.';
+    var headline = stars === 3 ? 'Amazing round!' : stars === 2 ? 'Great round!' : 'Round complete!';
+    var pts = sess.points;
     sess = null;
     show([
-      h('div', { class: 'done-head' }, [h('h1', { class: 'title', text: 'Round complete!' }),
-        h('p', { class: 'muted', text: subject + '. ' + n + ' questions.' })]),
+      h('div', { class: 'done-head' }, [starRow, h('h1', { class: 'title', text: headline }), h('p', { class: 'muted', text: subject + '. ' + n + ' questions.' })]),
       stats,
-      h('div', { class: 'panel' }, [h('p', { text: sureLine }), h('p', { class: 'muted', text: 'Questions you missed come back next round. Questions you got right come back later.' })])
+      h('div', { class: 'panel reveal', style: '--d:800ms' }, [
+        h('p', { class: 'streak-line', html: ICON.flame + '<span>' + liveStreak() + ' day streak' + (best >= 2 ? '. Best run: ' + best + ' in a row.' : '.') + '</span>' }),
+        h('p', { text: sureLine }),
+        h('p', { class: 'muted', text: 'Questions you missed come back next round. Questions you got right come back later.' })])
     ], actionBar([h('button', { class: 'btn', text: 'Continue', onclick: home }), h('button', { class: 'btn ghost', text: 'Play again', onclick: startSession })]));
+    sound('done');
+    for (var k = 1; k <= stars; k++) setTimeout(function () { sound('star'); }, k * 220 + 150);
+    if (stars === 3) setTimeout(function () { fx.confetti(140); }, 700);
+    if (pts > 0) fx.countUp(vPts, pts, '+');
+    if (accN) fx.countUp(vAcc, accN, '', '%');
   }
 
   function backHead(title) {
@@ -516,7 +718,7 @@
   }
 
   function csvText() {
-    var cols = ['t', 'session', 'item', 'subject', 'age', 'track', 'level', 'studentLevel', 'scan', 'bet', 'right', 'labels', 'close', 'picked', 'pickedRight', 'explanation'];
+    var cols = ['t', 'session', 'item', 'subject', 'age', 'track', 'level', 'studentLevel', 'scan', 'bet', 'right', 'hint', 'steps', 'labels', 'close', 'picked', 'pickedRight', 'explanation'];
     var esc = function (v) { v = v === null || v === undefined ? '' : String(v); return '"' + v.replace(/"/g, '""') + '"'; };
     return [cols.join(',')].concat(store.log.map(function (r) { return cols.map(function (c) { return esc(c === 'close' ? (r.close || r.trap) : r[c]); }).join(','); })).join('\n');
   }
