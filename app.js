@@ -359,13 +359,21 @@
   }
   function lockTiles(box) { Array.prototype.forEach.call(box.children, function (b) { b.disabled = true; }); }
 
-  // "Need a hint?": a closed dropdown that reveals the first step only. Optional.
+  // "Need a hint?": a dropdown that starts closed on every screen and reveals the first step only. Optional.
+  // The hint text is only added to the page when opened, so no browser can show it early.
   function hintBox(ctx) {
     var it = ctx.it;
     if (!it.steps || !it.steps.length) return null;
-    var panel = h('div', { class: 'hint' }, [h('p', { class: 'eyebrow', text: 'Hint' }), h('p', { text: it.hint || it.steps[0] })]);
-    return h('details', { class: 'hintdrop', ontoggle: function (e) { if (e.target.open) ctx.hint = true; } },
-      [h('summary', { class: 'hintbtn', text: 'Need a hint?' }), panel]);
+    var panel = null;
+    var btn = h('button', { class: 'linkbtn hintbtn', 'aria-expanded': 'false', text: 'Need a hint?', onclick: function () {
+      if (panel) { box.removeChild(panel); panel = null; btn.setAttribute('aria-expanded', 'false'); return; }
+      ctx.hint = true;
+      panel = h('div', { class: 'hint', role: 'status' }, [h('p', { class: 'eyebrow', text: 'Hint' }), h('p', { text: it.hint || it.steps[0] })]);
+      box.appendChild(panel);
+      btn.setAttribute('aria-expanded', 'true');
+    } });
+    var box = h('div', { class: 'stack hintdrop' }, [btn]);
+    return box;
   }
 
   // "Show me the steps": one step per tap, then the Right answer.
@@ -742,7 +750,14 @@
   }
 
   if ('serviceWorker' in navigator && !FRAMED && location.protocol.indexOf('http') === 0) {
-    try { navigator.serviceWorker.register('sw.js').catch(function () { /* still works online */ }); } catch (e) { /* ignore */ }
+    try {
+      // When a new version takes over, reload once so the player sees it now, not on the next visit.
+      var hadSW = !!navigator.serviceWorker.controller, reloaded = false;
+      navigator.serviceWorker.addEventListener('controllerchange', function () {
+        if (hadSW && !reloaded) { reloaded = true; location.reload(); }
+      });
+      navigator.serviceWorker.register('sw.js').catch(function () { /* still works online */ });
+    } catch (e) { /* ignore */ }
   }
 
   home();

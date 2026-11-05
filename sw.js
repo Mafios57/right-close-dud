@@ -1,9 +1,12 @@
 // Caches the game so it runs with no connection after the first visit.
-// When you change any file, bump CACHE (rcd-v6 -> rcd-v7) so phones load the new version.
-var CACHE = 'rcd-v6';
+// When you change any file, bump CACHE (rcd-v7 -> rcd-v8) so phones load the new version.
+var CACHE = 'rcd-v7';
 var FILES = ['./', 'index.html', 'app.js', 'items.js', 'manifest.webmanifest', 'icon.svg'];
 self.addEventListener('install', function (e) {
-  e.waitUntil(caches.open(CACHE).then(function (c) { return c.addAll(FILES); }));
+  // cache: 'reload' skips the browser's own cache, so a new version never saves old files.
+  e.waitUntil(caches.open(CACHE).then(function (c) {
+    return c.addAll(FILES.map(function (f) { return new Request(f, { cache: 'reload' }); }));
+  }));
   self.skipWaiting();
 });
 self.addEventListener('activate', function (e) {
