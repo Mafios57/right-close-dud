@@ -359,15 +359,13 @@
   }
   function lockTiles(box) { Array.prototype.forEach.call(box.children, function (b) { b.disabled = true; }); }
 
-  // "Need a hint?": reveals the first step only. Optional.
+  // "Need a hint?": a closed dropdown that reveals the first step only. Optional.
   function hintBox(ctx) {
     var it = ctx.it;
     if (!it.steps || !it.steps.length) return null;
-    var panel = h('div', { class: 'hint', role: 'status' }, [h('p', { class: 'eyebrow', text: 'Hint' }), h('p', { text: it.hint || it.steps[0] })]);
-    panel.hidden = !ctx.hint;
-    var btn = h('button', { class: 'linkbtn hintbtn', text: 'Need a hint?', onclick: function () { ctx.hint = true; panel.hidden = false; btn.hidden = true; } });
-    btn.hidden = !!ctx.hint;
-    return h('div', { class: 'stack' }, [btn, panel]);
+    var panel = h('div', { class: 'hint' }, [h('p', { class: 'eyebrow', text: 'Hint' }), h('p', { text: it.hint || it.steps[0] })]);
+    return h('details', { class: 'hintdrop', ontoggle: function (e) { if (e.target.open) ctx.hint = true; } },
+      [h('summary', { class: 'hintbtn', text: 'Need a hint?' }), panel]);
   }
 
   // "Show me the steps": one step per tap, then the Right answer.
