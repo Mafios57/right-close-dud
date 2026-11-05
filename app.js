@@ -471,11 +471,25 @@
   }
 
   // Ages 16-19: sort every answer.
+  // Next needs every answer sorted and exactly one marked Right. The line above Next always says what is missing,
+  // so the button is never grey without a reason.
   function sortStep(ctx) {
     var next = h('button', { class: 'btn', text: 'Next', disabled: true, onclick: function () {
       ctx.answers.forEach(function (a, i) { if (ctx.labels[i] === 'correct') ctx.chosen = a.text; });
       betStep(ctx);
     } });
+    var status = h('p', { class: 'sortstatus', role: 'status' });
+    function update() {
+      var left = ctx.answers.length - Object.keys(ctx.labels).length, n = 0;
+      Object.keys(ctx.labels).forEach(function (k) { if (ctx.labels[k] === 'correct') n++; });
+      var msg = '', warn = false;
+      if (n > 1) { msg = 'You marked ' + n + ' answers Right. Only one is Right. Change the others to Close or Dud.'; warn = true; }
+      else if (left > 0) msg = left === 1 ? 'Sort 1 more answer.' : 'Sort ' + left + ' more answers.';
+      else if (n === 0) { msg = 'Mark one answer as Right.'; warn = true; }
+      status.textContent = msg; status.hidden = !msg; status.classList.toggle('warn', warn);
+      next.disabled = !!msg;
+    }
+    update();
     var rows = h('div', { class: 'tiles' });
     ctx.answers.forEach(function (a, idx) {
       var seg = h('div', { class: 'seg', role: 'group', 'aria-label': 'Type for: ' + a.text });
@@ -483,13 +497,12 @@
         seg.appendChild(h('button', { class: 's-' + CLS[lab], 'data-type': lab, 'aria-pressed': 'false', text: LABELS[lab], onclick: function (ev) {
           ctx.labels[idx] = lab;
           Array.prototype.forEach.call(seg.children, function (b) { var on = b === ev.currentTarget; b.classList.toggle('on', on); b.setAttribute('aria-pressed', String(on)); });
-          var n = 0; Object.keys(ctx.labels).forEach(function (k) { if (ctx.labels[k] === 'correct') n++; });
-          next.disabled = Object.keys(ctx.labels).length < ctx.answers.length || n !== 1;
+          update();
         } }));
       });
       rows.appendChild(h('div', { class: 'sortcard' }, [h('div', { class: 'atop' }, [letterBadge(LETTERS[idx]), h('p', { class: 'atext', text: a.text })]), seg]));
     });
-    show([topBar(), stepHead('Sort it: Right, Close or Dud', ctx.it), h('p', { class: 'muted', text: 'Only one answer is Right.' }), rows, hintBox(ctx)], actionBar([next]));
+    show([topBar(), stepHead('Sort it: Right, Close or Dud', ctx.it), h('p', { class: 'muted', text: 'Only one answer is Right.' }), rows, hintBox(ctx)], actionBar([status, next]));
   }
 
   // Bet, after choosing.
