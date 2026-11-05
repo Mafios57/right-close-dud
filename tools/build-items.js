@@ -1,13 +1,13 @@
-// Adds the new questions in ../questions-v3 to the game, then writes the question lists.
+// Adds the new questions in questions-v3 to the game, then writes the question lists.
 // Run from the right-close-dud folder: node tools/build-items.js
 // 1. Reads items.js and every questions-v3/*.js file.
 // 2. A new question with the same id as an old one replaces it, so running this twice is safe.
-// 3. Writes items.js, then questions-v3-full.csv and questions-v3-full.md next to the game folder.
+// 3. Writes items.js, then questions-v3/questions-v3-full.csv and questions-v3-full.md.
 // 4. Runs tools/check-items.js.
 const fs = require('fs'), path = require('path'), { execFileSync } = require('child_process');
 const GAME = path.join(__dirname, '..');
-const SRC = path.join(GAME, '..', 'questions-v3');
-const OUT = path.join(GAME, '..');
+const SRC = path.join(GAME, 'questions-v3');
+const OUT = SRC;
 
 // ---------- read ----------
 const w = {};
@@ -76,7 +76,7 @@ const head = [
   '// target: a clear trick word in the question, or null.',
   '// steps: short, child-friendly steps that walk to the Right answer. "Show me the steps" shows them one at a time.',
   '// hint: optional nudge for "Need a hint?". If missing, the hint is step 1. Never give the answer away in a hint.',
-  '// New questions are written in ../questions-v3 and added with: node tools/build-items.js',
+  '// New questions are written in questions-v3 and added with: node tools/build-items.js',
   '',
   'window.ITEMS = ['
 ];

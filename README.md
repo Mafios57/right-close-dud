@@ -48,7 +48,8 @@ Ages 16-19, 10 questions a round:
 | app.js | Game logic |
 | items.js | The question bank. In the data, type "trap" is the Close answer. |
 | tools/check-items.js | Checks every question follows the rules |
-| tools/build-items.js | Adds the questions in `../questions-v3` to `items.js` and writes the full question lists |
+| tools/build-items.js | Adds the questions in `questions-v3` to `items.js` and writes the full question lists |
+| questions-v3/ | The version 3 questions, one file per subject, plus the full lists of all questions (`questions-v3-full.md` and `.csv`) |
 | sw.js | Offline cache |
 | manifest.webmanifest, icon.svg | Home-screen install |
 
@@ -73,13 +74,13 @@ Ages 16-19, 10 questions a round:
 
 ## Add a question
 
-The quickest way to add many questions is the `questions-v3` folder next to this one. Write each question there in its short form (see its README), then run:
+The quickest way to add many questions is the `questions-v3` folder. Write each question there in its short form (see its README), then run:
 
 ```
 node tools/build-items.js
 ```
 
-It adds the questions to `items.js`, writes `questions-v3-full.csv` and `questions-v3-full.md` next to the game folder, says if any level has fewer than 10 questions, and runs the checker. Running it twice is safe.
+It adds the questions to `items.js`, writes `questions-v3-full.csv` and `questions-v3-full.md` in the `questions-v3` folder, says if any level has fewer than 10 questions, and runs the checker. Running it twice is safe.
 
 You can also add one question straight to `items.js`. Copy this block, paste it inside the list (before the last `];`), and change it:
 

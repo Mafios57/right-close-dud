@@ -1,6 +1,6 @@
 // Caches the game so it runs with no connection after the first visit.
-// When you change any file, bump CACHE (rcd-v10 -> rcd-v11) so phones load the new version.
-var CACHE = 'rcd-v10';
+// When you change any file, bump CACHE (rcd-v11 -> rcd-v12) so phones load the new version.
+var CACHE = 'rcd-v11';
 var FILES = ['./', 'index.html', 'app.js', 'items.js', 'manifest.webmanifest', 'icon.svg'];
 self.addEventListener('install', function (e) {
   // cache: 'reload' skips the browser's own cache, so a new version never saves old files.

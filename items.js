@@ -5,7 +5,7 @@
 // target: a clear trick word in the question, or null.
 // steps: short, child-friendly steps that walk to the Right answer. "Show me the steps" shows them one at a time.
 // hint: optional nudge for "Need a hint?". If missing, the hint is step 1. Never give the answer away in a hint.
-// New questions are written in ../questions-v3 and added with: node tools/build-items.js
+// New questions are written in questions-v3 and added with: node tools/build-items.js
 
 window.ITEMS = [
   // ---------- Math ----------
