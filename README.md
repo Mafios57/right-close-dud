@@ -20,7 +20,7 @@ Plain HTML and JavaScript. No framework, no build step, no server.
 
 ## How a question works
 
-Ages 12-15, 6 questions a round:
+Ages 12-15, 10 questions a round:
 1. Word hunt, only on questions with a trick word.
 2. Pick the Right answer.
 3. Bet x1, x2 or x3. Points never go below zero.
@@ -28,7 +28,7 @@ Ages 12-15, 6 questions a round:
 5. Feedback names the mistake behind the Close answer.
 6. Why is it Close? Pick the mistake, then finish "This is wrong because...".
 
-Ages 16-19, 8 questions a round:
+Ages 16-19, 10 questions a round:
 1. Word hunt: every time in the first 6 rounds, then for 3 in 10 questions.
 2. Sort it: mark each answer Right, Close or Dud.
 3. Bet: x1 = +1 / 0, x2 = +2 / -2, x3 = +3 / -6.
@@ -38,6 +38,7 @@ Ages 16-19, 8 questions a round:
 
 - Everyone starts at Level 1 in each subject. 3 right in a row moves up. 2 wrong in a row moves down.
 - Ages 16-19 pick Core subjects (Math, Science, Language) or Science track (adds Advanced Math, Physics, Chemistry, Biology).
+- The bank has 270 questions. Every level of every subject has at least 10 questions for each age group, so a full round stays at the player's level.
 
 ## Files
 
@@ -47,6 +48,7 @@ Ages 16-19, 8 questions a round:
 | app.js | Game logic |
 | items.js | The question bank. In the data, type "trap" is the Close answer. |
 | tools/check-items.js | Checks every question follows the rules |
+| tools/build-items.js | Adds the questions in `../questions-v3` to `items.js` and writes the full question lists |
 | sw.js | Offline cache |
 | manifest.webmanifest, icon.svg | Home-screen install |
 
@@ -71,11 +73,19 @@ Ages 16-19, 8 questions a round:
 
 ## Add a question
 
-Every question lives in `items.js`. Copy this block, paste it inside the list (before the last `];`), and change it:
+The quickest way to add many questions is the `questions-v3` folder next to this one. Write each question there in its short form (see its README), then run:
+
+```
+node tools/build-items.js
+```
+
+It adds the questions to `items.js`, writes `questions-v3-full.csv` and `questions-v3-full.md` next to the game folder, says if any level has fewer than 10 questions, and runs the checker. Running it twice is safe.
+
+You can also add one question straight to `items.js`. Copy this block, paste it inside the list (before the last `];`), and change it:
 
 ```js
   {
-    id: "m12", subject: "Math", track: "core", ages: ["12-15"], level: { "12-15": 1 },
+    id: "m51", subject: "Math", track: "core", ages: ["12-15"], level: { "12-15": 1 },
     theme: "Sports", topic: "Number: percentages", syllabus: "Number: percentages",
     stem: "A team won 3 of its 4 matches. What percent did it win?",
     target: null,
@@ -95,7 +105,7 @@ Every question lives in `items.js`. Copy this block, paste it inside the list (b
 ```
 
 Rules:
-- `id` must be new. Use the subject letter and the next number (m12, s7, l6, x9).
+- `id` must be new. Use the subject letter and the next number (m51, s51, l51, x121).
 - `type: "correct"` is Right, `"trap"` is Close, `"dud"` is Dud. Exactly one Right, at least one Close, exactly one Dud.
 - Each Close answer needs `mis` (the mistake in plain words) and `why`. Reuse the same `mis` text when the same mistake appears again.
 - `level`: 1 = one step and everyday words, 2 = one idea that needs a check, 3 = exam level. Give a level for each age in `ages`.

@@ -10,7 +10,7 @@
   'use strict';
 
   var ITEMS = window.ITEMS || [];
-  var SESSION_SIZE = { '12-15': 6, '16-19': 8 };
+  var SESSION_SIZE = { '12-15': 10, '16-19': 10 };
   var UP_AFTER = 3, DOWN_AFTER = 2, MAX_LEVEL = 3;
   var INTERVALS = [0, 1, 2, 4, 8, 16];
   var SCORE = { 1: [1, 0], 2: [2, -2], 3: [3, -6] };
