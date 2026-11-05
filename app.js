@@ -153,6 +153,25 @@
     return store.lastDay === today || store.lastDay === yesterday ? store.streak || 0 : 0;
   }
 
+  // ---------- guide character ----------
+  // Chalky: a piece of chalk with a face. Drawn in code, so there is no image to download.
+  // Moods: 'happy' (right answers, welcome), 'oops' (wrong answers), 'think' (hints, tough rounds).
+  var MOUTH = { happy: 'M17 27q5 5 10 0', oops: 'M18 30q4-4 8 0', think: 'M19 28.5h7' };
+  function chalky(mood) {
+    var eyeY = mood === 'think' ? 18 : 20;
+    return h('span', { class: 'chalky c-' + mood, 'aria-hidden': 'true', html:
+      '<svg viewBox="0 0 44 44"><g transform="rotate(-10 22 22)">' +
+      '<rect class="body" x="10" y="5" width="24" height="35" rx="9"/>' +
+      '<rect class="dust" x="12" y="7" width="20" height="6" rx="3"/>' +
+      '<circle class="cheek" cx="14.5" cy="25" r="2.4"/><circle class="cheek" cx="29.5" cy="25" r="2.4"/>' +
+      '<circle class="eye" cx="18" cy="' + eyeY + '" r="2.1"/><circle class="eye" cx="26" cy="' + eyeY + '" r="2.1"/>' +
+      '<path class="mouth" d="' + (MOUTH[mood] || MOUTH.happy) + '"/></g></svg>' });
+  }
+  // Chalky with a speech bubble. "say" is a string or a list of elements.
+  function guide(mood, say) {
+    return h('div', { class: 'guide' }, [chalky(mood), h('div', { class: 'say' }, typeof say === 'string' ? [h('p', { text: say })] : say)]);
+  }
+
   // ---------- helpers ----------
   var app = document.getElementById('app');
   function h(tag, props, kids) {
@@ -269,7 +288,7 @@
         h('p', { class: 'muted', text: 'Science track adds advanced math, physics, chemistry and biology.' })]));
     }
     if (!store.age) {
-      kids.push(h('div', { class: 'panel' }, [h('p', { class: 'prompt', text: 'Which answer only looks right?' }),
+      kids.push(guide('happy', [h('p', { text: 'Hi, I am Chalky!' }), h('p', { class: 'prompt', text: 'Which answer only looks right?' }),
         h('p', { class: 'muted', text: 'Find the Right one. Catch the Close one. Skip the Dud. Pick your age group to start.' })]));
       show(kids, null);
       return;
@@ -277,7 +296,8 @@
     kids.push(h('div', { class: 'stack' }, [h('p', { class: 'eyebrow', text: 'Subject' }),
       chips(subjects().map(function (s) { return { value: s, label: s }; }), store.subject, function (v) { store.subject = v; save(); home(); })]));
 
-    var lv = levelState(store.subject).level, pool = poolFor(store.subject);
+    var lv = levelState(store.subject).level, pool = poolFor(store.subject), days = liveStreak();
+    kids.push(guide('happy', days >= 2 ? 'You are on a ' + days + ' day streak. Keep it going!' : 'Ready? Let us catch some Close answers.'));
     kids.push(h('div', { class: 'unit' }, [h('span', { class: 'eyebrow', text: store.subject + ', ages ' + store.age }),
       h('b', { text: 'Level ' + lv + ' of 3' }), h('span', { text: pool.length + ' questions. Win 3 in a row to level up.' })]));
     var path = h('div', { class: 'path' });
@@ -344,15 +364,20 @@
       h('h2', { class: 'prompt', text: it.stem })
     ]);
   }
+  // Answer tiles show a letter badge (A, B, C) so choices are easy to tell apart on a small screen.
+  var LETTERS = 'ABCDEFGH';
+  function letterBadge(ch) { return h('span', { class: 'letter', 'aria-hidden': 'true', text: ch }); }
   // A list of tiles where one can be selected. Calls onChange(index) on select.
-  function tileList(items, render, onChange, cls) {
+  // letters: optional list of badge letters, one per tile.
+  function tileList(items, render, onChange, cls, letters) {
     var box = h('div', { class: cls || 'tiles', role: 'radiogroup' });
     items.forEach(function (x, idx) {
-      var t = h('button', { class: 'tile', role: 'radio', 'aria-checked': 'false', onclick: function () {
+      var kids = letters ? [letterBadge(letters[idx]), h('span', { class: 'ttext' }, render(x))] : render(x);
+      var t = h('button', { class: 'tile' + (letters ? ' lettered' : ''), role: 'radio', 'aria-checked': 'false', onclick: function () {
         Array.prototype.forEach.call(box.children, function (b) { var on = b === t; b.classList.toggle('sel', on); b.setAttribute('aria-checked', String(on)); });
         fx.play(t, 'pop'); sound('tap');
         onChange(idx);
-      } }, render(x));
+      } }, kids);
       box.appendChild(t);
     });
     return box;
@@ -368,7 +393,7 @@
     var btn = h('button', { class: 'linkbtn hintbtn', 'aria-expanded': 'false', text: 'Need a hint?', onclick: function () {
       if (panel) { box.removeChild(panel); panel = null; btn.setAttribute('aria-expanded', 'false'); return; }
       ctx.hint = true;
-      panel = h('div', { class: 'hint', role: 'status' }, [h('p', { class: 'eyebrow', text: 'Hint' }), h('p', { text: it.hint || it.steps[0] })]);
+      panel = h('div', { class: 'hint', role: 'status' }, [guide('think', [h('p', { class: 'eyebrow', text: 'Hint' }), h('p', { text: it.hint || it.steps[0] })])]);
       box.appendChild(panel);
       btn.setAttribute('aria-expanded', 'true');
     } });
@@ -442,7 +467,7 @@
       ctx.labels = {}; ctx.labels[sel] = 'correct'; ctx.chosen = ctx.answers[sel].text; betStep(ctx);
     } });
     show([topBar(), stepHead('Pick the Right answer', ctx.it),
-      tileList(ctx.answers, function (a) { return [a.text]; }, function (idx) { sel = idx; next.disabled = false; }), hintBox(ctx)], actionBar([next]));
+      tileList(ctx.answers, function (a) { return [a.text]; }, function (idx) { sel = idx; next.disabled = false; }, null, LETTERS), hintBox(ctx)], actionBar([next]));
   }
 
   // Ages 16-19: sort every answer.
@@ -462,7 +487,7 @@
           next.disabled = Object.keys(ctx.labels).length < ctx.answers.length || n !== 1;
         } }));
       });
-      rows.appendChild(h('div', { class: 'sortcard' }, [h('p', { class: 'atext', text: a.text }), seg]));
+      rows.appendChild(h('div', { class: 'sortcard' }, [h('div', { class: 'atop' }, [letterBadge(LETTERS[idx]), h('p', { class: 'atext', text: a.text })]), seg]));
     });
     show([topBar(), stepHead('Sort it: Right, Close or Dud', ctx.it), h('p', { class: 'muted', text: 'Only one answer is Right.' }), rows, hintBox(ctx)], actionBar([next]));
   }
@@ -493,13 +518,14 @@
       feedbackStep(ctx);
     } });
     show([topBar(), stepHead('Spot the Close one', ctx.it), h('p', { class: 'muted', text: 'One of these looks right but is wrong.' }),
-      tileList(rest.map(function (i) { return ctx.answers[i]; }), function (a) { return [a.text]; }, function (idx) { sel = idx; check.disabled = false; }), hintBox(ctx)], actionBar([check]));
+      tileList(rest.map(function (i) { return ctx.answers[i]; }), function (a) { return [a.text]; }, function (idx) { sel = idx; check.disabled = false; },
+        null, rest.map(function (i) { return LETTERS[i]; })), hintBox(ctx)], actionBar([check]));
   }
 
   // Green or red sheet in place of the action bar.
   function sheet(ok, head, lines, onContinue, extra) {
     return actionBar([
-      h('div', { class: 'sheet-head', role: 'status' }, [h('span', { class: 'badge-ic', html: ok ? ICON.check : ICON.x }), h('b', { text: head })]),
+      h('div', { class: 'sheet-head', role: 'status' }, [h('span', { class: 'badge-ic' }, [chalky(ok ? 'happy' : 'oops')]), h('b', { text: head })]),
       h('div', { class: 'sheet-body' }, lines.map(function (l) { return typeof l === 'string' ? h('p', { text: l }) : l; })),
       extra || null,
       h('button', { class: 'btn ' + (ok ? 'go-right' : 'go-wrong'), text: 'Continue', onclick: onContinue })
@@ -538,7 +564,7 @@
     ctx.answers.forEach(function (a, i) {
       var mine = ctx.labels[i], match = mine === a.type;
       tiles.appendChild(h('div', { class: 'tile reveal t-' + CLS[a.type], style: '--d:' + (i * 90) + 'ms' }, [
-        h('div', { class: 'top' }, [h('span', { text: a.text }), h('span', { class: 'pill p-' + CLS[a.type], text: LABELS[a.type] })]),
+        h('div', { class: 'top' }, [letterBadge(LETTERS[i]), h('span', { class: 'ttext', text: a.text }), h('span', { class: 'pill p-' + CLS[a.type], text: LABELS[a.type] })]),
         h('span', { class: 'you', text: (match ? '✓ You said ' : '✗ You said ') + LABELS[mine] }),
         a.type === 'trap' ? h('span', { class: 'why', text: 'The mistake: ' + a.mis + '. ' + a.why }) : null
       ]));
@@ -650,10 +676,14 @@
     var subject = sess.subject, best = sess.best;
     var sureLine = sess.sure ? 'Very sure but wrong: ' + sess.sureWrong + ' of ' + sess.sure + ' x3 bets.' : 'You made no x3 bets this round.';
     var headline = stars === 3 ? 'Amazing round!' : stars === 2 ? 'Great round!' : 'Round complete!';
+    var cheer = stars === 3 ? guide('happy', 'The tricks did not fool you this time!')
+      : stars === 2 ? guide('happy', 'Nice work. A few Close answers got you. You will beat them next time.')
+      : guide('think', 'Close answers are tricky. The ones you missed come back next round, so you get another try.');
     var pts = sess.points;
     sess = null;
     show([
       h('div', { class: 'done-head' }, [starRow, h('h1', { class: 'title', text: headline }), h('p', { class: 'muted', text: subject + '. ' + n + ' questions.' })]),
+      n ? cheer : null,
       stats,
       h('div', { class: 'panel reveal', style: '--d:800ms' }, [
         h('p', { class: 'streak-line', html: ICON.flame + '<span>' + liveStreak() + ' day streak' + (best >= 2 ? '. Best run: ' + best + ' in a row.' : '.') + '</span>' }),

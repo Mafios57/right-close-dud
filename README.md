@@ -59,6 +59,8 @@ Ages 16-19, 8 questions a round:
 - End of round: 1 to 3 stars (3 stars = 90% or more right, 2 stars = 60% or more), numbers count up, best run in a row.
 - Daily streak: playing on consecutive days adds 1 to the flame on the home screen.
 - Sounds are made in code (no audio files). The speaker button on the home screen mutes them, and the choice is saved.
+- Chalky, a piece of chalk with a face, is the guide. Chalky says hello on the home screen, smiles or frowns on the feedback bar, helps with hints, and cheers at the end of a round. Drawn in code, no image files.
+- Answer tiles have letter badges (A, B, C), so choices are easy to tell apart. Letters stay the same for an answer on every screen of a question.
 - All motion switches off when the phone or computer is set to reduce motion.
 
 ## Help for students who are stuck

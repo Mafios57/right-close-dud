@@ -100,6 +100,16 @@ h1, h2 { margin: 0; text-wrap: balance; }
 .tile.t-close { border-color: var(--close); background: var(--close-soft); box-shadow: 0 4px 0 var(--close); color: var(--ink); }
 .tile.t-dud { border-color: var(--dud); background: var(--dud-soft); box-shadow: 0 4px 0 var(--dud); color: var(--ink); }
 .tile .top { display: flex; justify-content: space-between; align-items: center; gap: 10px; }
+.tile .top .ttext { flex: 1; }
+/* Letter badges (A, B, C) on answer tiles */
+.tile.lettered { flex-direction: row; align-items: center; gap: 12px; }
+.letter { flex: none; width: 32px; height: 32px; border-radius: 10px; border: 2px solid var(--line-dark); background: var(--bg); color: var(--muted);
+          display: grid; place-items: center; font-size: 15px; font-weight: 900; line-height: 1; }
+.tile.sel .letter { background: var(--primary); border-color: var(--primary); color: #FFFFFF; }
+.t-right .letter { border-color: var(--right); color: var(--right-text); }
+.t-close .letter { border-color: var(--close-dark); color: var(--close-text); }
+.t-dud .letter { border-color: var(--dud-dark); color: var(--dud-text); }
+.sortcard .atop { display: flex; align-items: center; gap: 12px; }
 .pill { flex: none; border-radius: 8px; padding: 2px 8px; font-size: 13px; font-weight: 900; letter-spacing: 0.06em; text-transform: uppercase; color: #FFFFFF; }
 .pill.p-right { background: var(--right); } .pill.p-close { background: var(--close-dark); } .pill.p-dud { background: var(--dud-dark); }
 .tile .you { font-size: 15px; font-weight: 800; color: var(--muted); }
@@ -129,8 +139,8 @@ textarea { width: 100%; min-height: 110px; padding: 14px; border-radius: 16px; b
 .actionbar.ok { background: var(--right-soft); border-top-color: var(--right-soft); }
 .actionbar.bad { background: var(--wrong-soft); border-top-color: var(--wrong-soft); }
 .sheet-head { display: flex; align-items: center; gap: 12px; }
-.badge-ic { width: 40px; height: 40px; border-radius: 50%; display: grid; place-items: center; background: #FFFFFF; flex: none; }
-.badge-ic svg { width: 24px; height: 24px; }
+.badge-ic { width: 48px; height: 48px; border-radius: 50%; display: grid; place-items: center; background: #FFFFFF; flex: none; }
+.badge-ic .chalky { width: 40px; height: 40px; }
 .ok .sheet-head, .ok .sheet-body { color: var(--right-text); }
 .bad .sheet-head, .bad .sheet-body { color: var(--wrong-text); }
 .sheet-head b { font-size: 24px; font-weight: 900; }
@@ -140,6 +150,31 @@ textarea { width: 100%; min-height: 110px; padding: 14px; border-radius: 16px; b
   .actionbar.ok, .actionbar.bad { animation: rise 0.18s ease-out; }
   }
 @keyframes rise { from { transform: translateY(24px); opacity: 0.6; } to { transform: none; opacity: 1; } }
+
+/* Chalky, the guide character, and its speech bubble */
+.chalky { display: inline-block; width: 52px; height: 52px; flex: none; }
+.chalky svg { width: 100%; height: 100%; display: block; overflow: visible; }
+.chalky .body { fill: #FFFFFF; stroke: var(--line-dark); stroke-width: 2; }
+.chalky .dust { fill: var(--soft); }
+.chalky .cheek { fill: var(--close); opacity: 0.35; }
+.chalky .eye { fill: var(--ink); }
+.chalky .mouth { fill: none; stroke: var(--ink); stroke-width: 2.5; stroke-linecap: round; }
+.guide { display: flex; align-items: flex-end; gap: 10px; }
+.guide > .chalky { width: 64px; height: 64px; }
+.guide .say { position: relative; flex: 1; min-width: 0; border: 2px solid var(--line); border-radius: 16px; background: var(--bg); padding: 10px 14px;
+              display: flex; flex-direction: column; gap: 4px; font-weight: 700; }
+.guide .say::before { content: ""; position: absolute; left: -9px; bottom: 14px; width: 14px; height: 14px; background: inherit;
+                      border-left: 2px solid var(--line); border-bottom: 2px solid var(--line); transform: rotate(45deg); }
+.hint .guide .say { background: var(--bg); border-color: var(--gold); }
+.hint .guide .say::before { border-color: var(--gold); }
+.hint .chalky { width: 44px; height: 44px; }
+.hint { padding: 12px; }
+@media (prefers-reduced-motion: no-preference) {
+  .chalky svg { animation: bob 2.6s ease-in-out infinite; transform-origin: 50% 90%; }
+  .badge-ic .chalky svg { animation: hop 0.45s ease-out 1; }
+}
+@keyframes bob { 0%, 100% { transform: translateY(0) rotate(0); } 50% { transform: translateY(-2px) rotate(2deg); } }
+@keyframes hop { 0% { transform: translateY(6px) scale(0.9); } 60% { transform: translateY(-3px) scale(1.05); } 100% { transform: none; } }
 
 /* Hint and step by step */
 .linkbtn.hintbtn { align-self: flex-start; color: var(--primary); min-height: 44px; display: flex; align-items: center; gap: 6px; cursor: pointer; }
